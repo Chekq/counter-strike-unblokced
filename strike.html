@@ -24,154 +24,36 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;color:#fff;font-f
 const $=id=>document.getElementById(id),E={};['hp','ammo','money','info','feed','msg','buy','hurt','ch','menu'].forEach(i=>E[i]=$(i));
 const T=(k,s)=>{if(E[k]._t!==s)E[k].textContent=E[k]._t=s};
 const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,160);
-scene.background=new THREE.Color(0x82b3d8);scene.fog=new THREE.FogExp2(0x82b3d8,0.008);camera.rotation.order='YXZ';scene.add(camera);
+scene.background=new THREE.Color(0xa9c6dc);scene.fog=new THREE.Fog(0xa9c6dc,40,120);camera.rotation.order='YXZ';scene.add(camera);
 const renderer=new THREE.WebGLRenderer({antialias:true}),cv=renderer.domElement;
-renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;document.body.prepend(cv);
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));document.body.prepend(cv);
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+scene.add(new THREE.HemisphereLight(0xffffff,0x776655,.95));const sun=new THREE.DirectionalLight(0xffffff,.6);sun.position.set(20,40,10);scene.add(sun);
+const fl=new THREE.Mesh(new THREE.PlaneGeometry(100,100),new THREE.MeshLambertMaterial({color:0xc4ae82}));fl.rotation.x=-Math.PI/2;scene.add(fl);
+const gh=new THREE.GridHelper(100,50,0xa8935f,0xb59f6e);gh.position.y=.02;scene.add(gh);
 
-// Dynamic Procedural Textures
-function genTex(type){
- const c=document.createElement('canvas');c.width=c.height=256;const ctx=c.getContext('2d');
- if(type==='wall'){
-  ctx.fillStyle='#d8c199';ctx.fillRect(0,0,256,256);
-  ctx.fillStyle='rgba(0,0,0,0.03)';for(let i=0;i<3000;i++)ctx.fillRect(Math.random()*256,Math.random()*256,2,2);
-  ctx.strokeStyle='#b89d71';ctx.lineWidth=3;
-  for(let y=0;y<=256;y+=32){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(256,y);ctx.stroke();
-   const o=(y/32)%2*32;for(let x=o;x<=256;x+=64){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y+32);ctx.stroke();}
-  }
- }else if(type==='crate'){
-  ctx.fillStyle='#9e6d3b';ctx.fillRect(0,0,256,256);
-  ctx.fillStyle='#5c3d1e';ctx.fillRect(0,0,256,16);ctx.fillRect(0,240,256,16);ctx.fillRect(0,0,16,256);ctx.fillRect(240,0,16,256);
-  ctx.lineWidth=12;ctx.strokeStyle='#5c3d1e';ctx.beginPath();ctx.moveTo(16,16);ctx.lineTo(240,240);ctx.moveTo(240,16);ctx.lineTo(16,240);ctx.stroke();
-  ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=2;for(let y=32;y<240;y+=32){ctx.beginPath();ctx.moveTo(16,y);ctx.lineTo(240,y);ctx.stroke();}
- }else if(type==='ground'){
-  ctx.fillStyle='#caa872';ctx.fillRect(0,0,256,256);
-  ctx.fillStyle='rgba(0,0,0,0.05)';for(let i=0;i<4000;i++)ctx.fillRect(Math.random()*256,Math.random()*256,2,2);
-  ctx.fillStyle='rgba(255,255,255,0.05)';for(let i=0;i<2000;i++)ctx.fillRect(Math.random()*256,Math.random()*256,2,2);
- }else if(type==='door'){
-  ctx.fillStyle='#3d483e';ctx.fillRect(0,0,256,256);
-  ctx.strokeStyle='#212a22';ctx.lineWidth=8;ctx.strokeRect(8,8,240,240);
-  ctx.beginPath();ctx.moveTo(128,8);ctx.lineTo(128,248);ctx.stroke();
-  ctx.fillStyle='#283229';ctx.fillRect(24,30,80,80);ctx.fillRect(152,30,80,80);ctx.fillRect(24,140,80,80);ctx.fillRect(152,140,80,80);
- }else if(type.startsWith('site')){
-  ctx.fillStyle='#d8c199';ctx.fillRect(0,0,256,256);
-  ctx.font='bold 140px sans-serif';ctx.fillStyle='#a32d2d';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText(type==='siteA'?'A':'B',128,128);
- }
- const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;return t;
-}
-
-const TEX={
- wall:genTex('wall'),crate:genTex('crate'),ground:genTex('ground'),
- door:genTex('door'),siteA:genTex('siteA'),siteB:genTex('siteB')
-};
-TEX.ground.repeat.set(16,16);TEX.wall.repeat.set(2,2);
-
-const MAT={
- wall:new THREE.MeshLambertMaterial({map:TEX.wall}),
- crate:new THREE.MeshLambertMaterial({map:TEX.crate}),
- door:new THREE.MeshLambertMaterial({map:TEX.door}),
- ground:new THREE.MeshLambertMaterial({map:TEX.ground}),
- dark:new THREE.MeshLambertMaterial({color:0x332a1e}),
- trim:new THREE.MeshLambertMaterial({color:0x8a7150}),
- metal:new THREE.MeshStandardMaterial({color:0x556068,roughness:0.4,metalness:0.6}),
- car:new THREE.MeshStandardMaterial({color:0x3d4a5c,roughness:0.5}),
- siteA:new THREE.MeshLambertMaterial({map:TEX.siteA}),
- siteB:new THREE.MeshLambertMaterial({map:TEX.siteB})
-};
-
-// Lighting
-scene.add(new THREE.HemisphereLight(0xfff3e0,0x556677,0.85));
-const sun=new THREE.DirectionalLight(0xfff5e6,1.1);sun.position.set(30,50,20);
-sun.castShadow=true;sun.shadow.mapSize.width=2048;sun.shadow.mapSize.height=2048;
-sun.shadow.camera.near=10;sun.shadow.camera.far=150;
-const d=60;sun.shadow.camera.left=-d;sun.shadow.camera.right=d;sun.shadow.camera.top=d;sun.shadow.camera.bottom=-d;
-scene.add(sun);
-
-// Floor
-const fl=new THREE.Mesh(new THREE.PlaneGeometry(120,120),MAT.ground);fl.rotation.x=-Math.PI/2;fl.receiveShadow=true;scene.add(fl);
-
-// World Builder
+// ---------- Dust 2 layout (north = -z): CT spawn top, T spawn bottom, B site left, A site right, Long A east, Mid center, B tunnels west ----------
 const boxes=[],walls=[];
-function box(x,z,w,d,h,mat=MAT.wall,isSolid=true){
- const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
- m.position.set(x,h/2,z);m.castShadow=m.receiveShadow=true;scene.add(m);
- walls.push(m);if(isSolid)boxes.push([x-w/2,x+w/2,z-d/2,z+d/2]);return m;
-}
-
-function pad(x,z,w,d,mat=MAT.trim,h=0.15){
- const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
- m.position.set(x,h/2,z);m.receiveShadow=true;scene.add(m);
-}
-
-function arch(x,z,w,d,h,mat=MAT.wall){
- box(x-w/2+0.5,z,1,d,h,mat);box(x+w/2-0.5,z,1,d,h,mat);
- const top=new THREE.Mesh(new THREE.BoxGeometry(w,1.2,d),mat);
- top.position.set(x,h-0.6,z);top.castShadow=top.receiveShadow=true;scene.add(top);walls.push(top);
-}
-
-function barrel(x,z){
- const m=new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.6,1.6,12),MAT.metal);
- m.position.set(x,0.8,z);m.castShadow=m.receiveShadow=true;scene.add(m);walls.push(m);
- boxes.push([x-0.6,x+0.6,z-0.6,z+0.6]);
-}
-
-function car(x,z){
- const body=new THREE.Mesh(new THREE.BoxGeometry(2.4,1.2,4.6),MAT.car);body.position.set(x,0.8,z);
- const glass=new THREE.Mesh(new THREE.BoxGeometry(2.1,0.8,2.2),MAT.dark);glass.position.set(x,1.6,z-0.2);
- body.castShadow=body.receiveShadow=glass.castShadow=true;scene.add(body,glass);walls.push(body,glass);
- boxes.push([x-1.2,x+1.2,z-2.3,z+2.3]);
-}
-
-// Map Assembly
-pad(35,-35,22,22,MAT.trim);pad(-36,-35,20,20,MAT.trim);pad(0,40,44,10,MAT.trim);pad(3,-40,30,12,MAT.dark);
-
-// Outer Perimeter & Dividers
-[[0,-46.5,94,1,7],[0,46.5,94,1,7],[-46.5,0,1,94,7],[46.5,0,1,94,7],
- [-19,5,30,42,6.5],[21,8,26,36,6.5],
- [-21,-39,6,14,6],[21,-38,6,16,6]
-].forEach(a=>box(...a,MAT.wall));
-
-// Architectural Arches & Doors
-arch(-1, -5, 7, 2, 5.5); // Mid Doors Arch
-box(-1, -5, 5, 0.4, 4.5, MAT.door); // Mid Double Doors
-arch(36.5, -15, 8, 2, 5.5); // Long Doors Arch
-box(36.5, -15, 6, 0.4, 4.5, MAT.door);
-
-// Roof Overhangs (B Tunnels)
-const tunRoof=new THREE.Mesh(new THREE.BoxGeometry(8,0.5,30),MAT.trim);
-tunRoof.position.set(-40,5.8,5);tunRoof.castShadow=true;scene.add(tunRoof);
-
-// Cover, Crates & Details
-box(-1, 12, 3, 3, 1.6, MAT.crate); // Mid Xbox
-box(43.5, -2, 2.5, 2.5, 2.2, MAT.crate); // Long Crates
-box(36.5, 20, 3, 3, 2.2, MAT.crate);
-car(36.5, 8); // Long A Car
-
-// Tunnels Details
-box(-43.5, 8, 3, 3, 2.2, MAT.crate);box(-36.5, -4, 3, 3, 2.2, MAT.crate);
-barrel(-41, 15); barrel(-42, 17);
-
-// Spawn Crates
-[[-24,44], [18,44], [34,30], [-30,30], [12,31]].forEach(([x,z])=>box(x,z,3,3,2.2,MAT.crate));
-
-// A Site Layout
-box(30, -38, 4, 4, 2.4, MAT.crate);box(40, -28, 3, 3, 2.2, MAT.crate);box(43, -40, 3, 3, 2.2, MAT.crate);
-const siteAWall=box(32, -45.5, 8, 0.8, 4, MAT.siteA);
-
-// B Site Layout
-box(-42, -40, 4, 4, 2.4, MAT.crate);box(-33, -38, 3, 3, 2.2, MAT.crate);box(-42, -28, 3, 3, 2.2, MAT.crate);
-const siteBWall=box(-45.5, -38, 0.8, 8, 4, MAT.siteB);
-
-// CT Spawn Props
-box(-6, -42, 3, 3, 2, MAT.crate);box(14, -40, 3, 3, 2, MAT.crate);barrel(-1, -38);
-
+function box(x,z,w,d,h,c){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshLambertMaterial({color:c}));m.position.set(x,h/2,z);scene.add(m);walls.push(m);boxes.push([x-w/2,x+w/2,z-d/2,z+d/2])}
+function pad(x,z,w,d,c){const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d),new THREE.MeshLambertMaterial({color:c}));m.rotation.x=-Math.PI/2;m.position.set(x,.03,z);scene.add(m)}
+pad(35,-35,22,22,0xdcc790);pad(-36,-35,20,20,0xdcc790);pad(0,40,44,10,0xd1b277);pad(3,-40,30,12,0xaab4bd);
+const WL=0xc9a96e,DV=0xb8955a,CR=0x8b5e34;
+[[0,-46.5,94,1,6,WL],[0,46.5,94,1,6,WL],[-46.5,0,1,94,6,WL],[46.5,0,1,94,6,WL],
+ [-19,5,30,42,5,DV],[21,8,26,36,5,DV],      // dividers: tunnels|mid and mid|long
+ [-21,-39,6,14,5,WL],[21,-38,6,16,5,WL],    // CT spawn side walls
+ [-1,-5,6,1.5,4,WL],                        // mid doors
+ [-1,12,3,3,1.4,CR],[36.5,10,3,5,1.6,0x6a7a5a],[43.5,-2,3,3,2.2,CR],[36.5,20,3,3,2.2,CR],   // mid xbox, long car + crates
+ [-43.5,8,3,3,2.2,CR],[-36.5,-4,3,3,2.2,CR],                                                 // tunnels
+ [-24,44,3,3,2.2,CR],[18,44,3,3,2.2,CR],[34,30,3,3,2.2,CR],[-30,30,3,3,2.2,CR],[12,31,3,3,2.2,CR], // T spawn
+ [30,-38,4,4,2.4,CR],[40,-28,3,3,2.2,CR],[43,-40,3,3,2.2,CR],                               // A site
+ [-42,-40,4,4,2.4,CR],[-33,-38,3,3,2.2,CR],[-42,-28,3,3,2.2,CR],                            // B site
+ [-6,-42,3,3,2,CR],[14,-40,3,3,2,CR]                                                         // CT spawn
+].forEach(a=>box(...a));
 function push(p,r){for(const[b0,b1,c0,c1]of boxes){const cx=Math.max(b0,Math.min(p.x,b1)),cz=Math.max(c0,Math.min(p.z,c1)),dx=p.x-cx,dz=p.z-cz,d=Math.hypot(dx,dz);
  if(d<r){if(d>1e-4){p.x+=dx/d*(r-d);p.z+=dz/d*(r-d)}else{const l=p.x-b0,rr=b1-p.x,t=p.z-c0,bt=c1-p.z,m=Math.min(l,rr,t,bt);if(m===l)p.x=b0-r;else if(m===rr)p.x=b1+r;else if(m===t)p.z=c0-r;else p.z=c1+r}}}}
 const loc=(x,z)=>z>26?'T Spawn':z<-24?(x>24?'A Site':x<-24?'B Site':'CT Spawn'):x>34?'Long A':x<-34?'B Tunnels':z<-10?'Top Mid':x>-4&&x<8?'Mid':'';
 
-// Waypoints & Bot Logic
+// bot waypoints: T spawn, tunnels/B, long/A, mid, CT side
 const ND=[[-8,40],[-38,36],[38,36],[5,34],[-40,20],[-40,0],[-40,-14],[-38,-34],[40,22],[40,2],[40,-14],[34,-34],[5,20],[5,4],[5,-14],[5,-24],[4,-40],[-21,-29],[21,-22],[-30,-28]];
 const ADJ=ND.map(()=>[]);
 [[0,3],[0,1],[0,2],[1,4],[4,5],[5,6],[6,7],[2,8],[8,9],[9,10],[10,11],[3,12],[12,13],[13,14],[14,15],[15,16],[15,17],[17,19],[19,7],[15,18],[18,11],[14,18]].forEach(([a,b])=>{ADJ[a].push(b);ADJ[b].push(a)});
@@ -183,7 +65,8 @@ function near(){let r=0,m=1e9;ND.forEach((n,i)=>{const d=Math.hypot(n[0]-camera.
 
 let ac;function snd(f,d,v,t){if(!ac)return;const n=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();o.type=t;o.frequency.setValueAtTime(f,n);o.frequency.exponentialRampToValueAtTime(40,n+d);g.gain.setValueAtTime(v,n);g.gain.exponentialRampToValueAtTime(.001,n+d);o.connect(g);g.connect(ac.destination);o.start(n);o.stop(n+d)}
 
-// CS2 Weapons
+// ---------- CS2 weapons ----------
+// key,name,price,dmg,armorPen,rangeMod(per 12.7m),headMult,mag,reserve,secBetweenShots,auto,recoil,spread,reload,len,color,speed m/s,killReward,isPistol
 const G={};
 [['usp','USP-S',0,35,.47,.91,4,12,24,.17,0,.014,.004,2.2,.35,0x2a2a2a,6.1,300,1],
  ['p250','P250',300,38,.64,.85,4,13,26,.15,0,.016,.005,2.2,.35,0x3a3a3a,6.1,300,1],
@@ -197,7 +80,7 @@ const G={};
 ].forEach(([k,n,p,dmg,pen,rng,hs,mag,res,rate,auto,rec,spr,rl,len,col,spd,kr,sec])=>G[k]={n,p,dmg,pen,rng,hs,mag,res,rate,auto,rec,spr,rl,len,col,spd,kr,sec});
 const SHOP=['p250','deagle','mp9','famas','m1s','m4','awp','kev'];
 const SHOPTXT='BUY (press number, B closes)\n'+SHOP.map((k,i)=>(i+1)+'  '+(k==='kev'?'Kevlar $650':G[k].n+' $'+G[k].p)).join('\n');
-const gun=new THREE.Mesh(new THREE.BoxGeometry(.07,.1,1),MAT.metal);camera.add(gun);
+const gun=new THREE.Mesh(new THREE.BoxGeometry(.07,.1,1),new THREE.MeshLambertMaterial({color:0x2a2a2a}));camera.add(gun);
 const rayS=new THREE.Raycaster(),rayL=new THREE.Raycaster(),sg=new THREE.SphereGeometry(.06,6,4),sm=new THREE.MeshBasicMaterial({color:0xffdd88}),K={};
 let yaw=0,pitch=0,rk=0,spread=0,vx=0,vz=0,vy=0,py=0,ground=true,cd=0,rl=0,kick=0,hurt=0,trig=false,gunZ=-.5,scoped=false,buyOpen=false;
 let hp=100,armor=0,money=800,cur='usp',inv,ammo,bots=[],sparks=[],phase='freeze',pt=10,round=1,wins=0,losses=0,locked=false,lostRound=true,sens=.002;
@@ -210,16 +93,16 @@ function buy(i){const k=SHOP[i];if(phase!=='freeze'||hp<=0||!k)return;
  const g=G[k];if(money<g.p||ammo[k])return;const s=g.sec?'sec':'pri';if(inv[s])delete ammo[inv[s]];
  inv[s]=k;ammo[k]={m:g.mag,r:g.res};cur=k;money-=g.p;setGun()}
 
-// T Bots
+// ---------- T bots (AK-47) ----------
 function makeBot(x,z){
  const g=new THREE.Group();g.rotation.order='YXZ';
- const body=new THREE.Mesh(new THREE.BoxGeometry(.8,1.45,.5),new THREE.MeshLambertMaterial({color:0x6b4a2f}));body.position.y=.72;body.castShadow=true;
- const head=new THREE.Mesh(new THREE.SphereGeometry(.24,10,8),new THREE.MeshLambertMaterial({color:0xe0b48a}));head.position.y=1.72;head.castShadow=true;
- const gn=new THREE.Mesh(new THREE.BoxGeometry(.08,.1,.7),MAT.metal);gn.position.set(.3,1.1,.45);
+ const body=new THREE.Mesh(new THREE.BoxGeometry(.8,1.45,.5),new THREE.MeshLambertMaterial({color:0x6b4a2f}));body.position.y=.72;
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.24,10,8),new THREE.MeshLambertMaterial({color:0xe0b48a}));head.position.y=1.72;
+ const gn=new THREE.Mesh(new THREE.BoxGeometry(.08,.1,.7),new THREE.MeshLambertMaterial({color:0x222222}));gn.position.set(.3,1.1,.45);
  g.add(body,head,gn);g.position.set(x,0,z);scene.add(g);
  const b={g,body,head,hp:100,armor:round>=2?100:0,helmet:round>=2,dead:false,dt:0,at:0,path:[],think:Math.random()*.2,seen:false,react:0,cd:0,sw:0,sd:0,st:0,lx:x,lz:z,dist:0};
  body.userData.b=head.userData.b=b;head.userData.head=true;return b}
-const BOT_ACC=.3;
+const BOT_ACC=.3;   // bots' best-case hit chance. Lower = easier.
 function hurtPlayer(d){if(hp<=0)return;if(armor>0){const h=d*G.ak.pen;armor=Math.max(0,armor-(d-h)*.5);d=h}hp-=d;hurt=1;snd(90,.15,.3,'triangle');if(hp<=0)endRound(false)}
 function botShot(b){const d=b.dist;snd(150,.12,Math.max(.03,.22*(1-d/60)),'sawtooth');
  if(Math.random()<Math.max(.06,Math.min(BOT_ACC,.5-d*.012)))hurtPlayer(G.ak.dmg*Math.pow(G.ak.rng,d/12.7))}
@@ -244,17 +127,17 @@ function botAI(b,dt){
  }
  push(p,.5)}
 
-// Rounds Loop
+// ---------- rounds ----------
 function newRound(lost){
  bots.forEach(b=>scene.remove(b.g));bots=[];
  if(lost){inv={pri:null,sec:'usp'};ammo={usp:{m:12,r:24}};cur='usp';armor=0}
  else for(const k in ammo){ammo[k].m=G[k].mag;ammo[k].r=G[k].res}
- hp=100;camera.position.set(4,1.65,-40);yaw=Math.PI;pitch=rk=0;vx=vz=vy=py=0;ground=true;buyOpen=false;
- for(let i=0,n=Math.min(3+wins,8);i<n;i++)bots.push(makeBot(-18+i*4.5,41+(i%2)*2.5));
+ hp=100;camera.position.set(4,1.65,-40);yaw=Math.PI;pitch=rk=0;vx=vz=vy=py=0;ground=true;buyOpen=false;   // CT spawn, facing south
+ for(let i=0,n=Math.min(3+wins,8);i<n;i++)bots.push(makeBot(-18+i*4.5,41+(i%2)*2.5));                       // T spawn
  phase='freeze';pt=10;setGun()}
 function endRound(win){if(phase!=='live')return;phase='end';pt=3.5;lostRound=!win;if(win){wins++;money+=3250}else{losses++;money+=1400}}
 
-// Shooting Mechanics
+// ---------- shooting (CS2 damage model) ----------
 function tryFire(){
  if(hp<=0||cd>0||rl>0)return;const g=G[cur],a=ammo[cur];if(a.m<=0){reload();return}
  a.m--;cd=g.rate;kick=1;camera.rotation.set(pitch+rk,yaw,0);scene.updateMatrixWorld();
@@ -264,18 +147,18 @@ function tryFire(){
  const wh=rayS.intersectObjects(walls)[0],bh=rayS.intersectObjects(bots.filter(b=>!b.dead).flatMap(b=>[b.body,b.head]))[0];
  if(bh&&(!wh||bh.distance<wh.distance)){
   const b=bh.object.userData.b,hs=bh.object.userData.head;
-  let dmg=g.dmg*Math.pow(g.rng,bh.distance/12.7),prot=b.armor>0;
-  if(hs){dmg*=g.hs;prot=prot&&b.helmet}
-  else if(bh.point.y<.7){dmg*=.75;prot=false}
-  else if(bh.point.y<1.05)dmg*=1.25;
-  if(prot){const h=dmg*g.pen;b.armor=Math.max(0,b.armor-(dmg-h)*.5);dmg=h}
+  let dmg=g.dmg*Math.pow(g.rng,bh.distance/12.7),prot=b.armor>0;     // range falloff
+  if(hs){dmg*=g.hs;prot=prot&&b.helmet}                                // head multiplier, only a helmet protects it
+  else if(bh.point.y<.7){dmg*=.75;prot=false}                          // legs: 0.75x, no armor
+  else if(bh.point.y<1.05)dmg*=1.25;                                   // stomach: 1.25x
+  if(prot){const h=dmg*g.pen;b.armor=Math.max(0,b.armor-(dmg-h)*.5);dmg=h}   // armor penetration
   b.hp-=dmg;E.ch.classList.add('hit');setTimeout(()=>E.ch.classList.remove('hit'),90);route(b,near());
   if(b.hp<=0&&!b.dead){b.dead=true;b.dt=0;money+=g.kr;feed((hs?'Headshot! ':'Kill ')+'+$'+g.kr)}
   else if(hs&&prot)feed('Helmet absorbed the hit');
  }else if(wh){const m=new THREE.Mesh(sg,sm);m.position.copy(wh.point);scene.add(m);sparks.push({m,t:.25})}
  rk+=g.rec*.6;pitch+=g.rec*.4;yaw+=(Math.random()-.5)*g.rec*.5;spread=Math.min(.05,spread+g.spr*.7);snd(200,.12,.25,'sawtooth')}
 
-// Update Loop
+// ---------- update ----------
 function update(dt){
  const alive=hp>0,g=G[cur];
  if(alive){const f=(K.KeyW?1:0)-(K.KeyS?1:0),s=(K.KeyD?1:0)-(K.KeyA?1:0),l=Math.hypot(f,s)||1,sp=K.ShiftLeft?g.spd*.5:g.spd;
@@ -295,14 +178,14 @@ function update(dt){
  else{pt-=dt;if(pt<=0){round++;newRound(lostRound)}}
  money=Math.min(money,16000);
  const am=ammo[cur],left=bots.filter(b=>!b.dead).length;
- T('hp','HP '+Math.ceil(Math.max(0,hp))+'    ARMOR '+Math.ceil(armor));
+ T('hp','HP '+Math.ceil(Math.max(0,hp))+'   ARMOR '+Math.ceil(armor));
  T('ammo',g.n+(rl>0?'  (reloading)':'')+'\n'+am.m+' / '+am.r);T('money','$'+money);
  T('info','Round '+round+'  ·  Wins '+wins+' – Losses '+losses+'\nTerrorists left: '+left+(round>=2?'  (armored)':'')+'\n'+loc(camera.position.x,camera.position.z));
  T('buy',phase==='freeze'?(buyOpen?SHOPTXT:'Warm-up '+Math.ceil(pt)+'s — press B to buy'):'');
  T('msg',phase==='end'?(hp<=0?'YOU DIED':'ROUND WON'):'');
  E.hurt.style.opacity=hurt;E.ch.style.setProperty('--g',(4+(spread+Math.hypot(vx,vz)*.004+(py>0?.03:0))*450|0)+'px')}
 
-// Input Handlers
+// ---------- input ----------
 const sl=$('sens');try{sl.value=localStorage.getItem('strikeSens')||4}catch(e){}
 const setSens=()=>{sens=sl.value*.0005;try{localStorage.setItem('strikeSens',sl.value)}catch(e){}};sl.oninput=setSens;setSens();
 $('play').onclick=()=>{ac=ac||new(window.AudioContext||window.webkitAudioContext)();cv.requestPointerLock()};
